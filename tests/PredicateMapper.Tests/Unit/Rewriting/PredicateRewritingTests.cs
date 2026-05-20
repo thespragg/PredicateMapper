@@ -1,10 +1,10 @@
 using System.Linq.Expressions;
-using ExpressionMapper.Exceptions;
-using ExpressionMapper.Mapping;
-using ExpressionMapper.Tests.TestModels;
-using ExpressionMapper.Tests.Unit.Configuration;
+using PredicateMapper.Exceptions;
+using PredicateMapper.Mapping;
+using PredicateMapper.Tests.TestModels;
+using PredicateMapper.Tests.Unit.Configuration;
 
-namespace ExpressionMapper.Tests.Unit.Rewriting;
+namespace PredicateMapper.Tests.Unit.Rewriting;
 
 public class PredicateRewritingTests
 {

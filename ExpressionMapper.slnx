@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/ExpressionMapper/ExpressionMapper.csproj" />
-  </Folder>
-  <Folder Name="/test/">
-    <Project Path="tests/ExpressionMapper.Tests/ExpressionMapper.Tests.csproj" />
-  </Folder>
-</Solution>

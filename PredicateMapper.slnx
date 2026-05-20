@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PredicateMapper/PredicateMapper.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="tests/PredicateMapper.Tests/PredicateMapper.Tests.csproj" />
+  </Folder>
+</Solution>

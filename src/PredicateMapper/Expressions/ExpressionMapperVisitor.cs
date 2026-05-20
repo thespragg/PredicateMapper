@@ -1,8 +1,8 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using ExpressionMapper.Exceptions;
+using PredicateMapper.Exceptions;
 
-namespace ExpressionMapper.Expressions;
+namespace PredicateMapper.Expressions;
 
 internal sealed class ExpressionMapperVisitor(
     ParameterExpression destParam,

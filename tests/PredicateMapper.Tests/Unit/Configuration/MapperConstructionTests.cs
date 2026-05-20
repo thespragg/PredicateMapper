@@ -1,8 +1,8 @@
-using ExpressionMapper.Exceptions;
-using ExpressionMapper.Mapping;
-using ExpressionMapper.Tests.TestModels;
+using PredicateMapper.Exceptions;
+using PredicateMapper.Mapping;
+using PredicateMapper.Tests.TestModels;
 
-namespace ExpressionMapper.Tests.Unit.Configuration;
+namespace PredicateMapper.Tests.Unit.Configuration;
 public class MapperConstructionTests
 {
     [Fact]

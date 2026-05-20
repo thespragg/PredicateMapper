@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace ExpressionMapper.Expressions;
+namespace PredicateMapper.Expressions;
 
 internal interface IEntityMapper
 {

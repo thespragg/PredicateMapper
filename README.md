@@ -1,8 +1,8 @@
 # Expression Mapping Library
 
-[![CI](https://github.com/thespragg/ExpressionMapper/actions/workflows/ci.yml/badge.svg)](https://github.com/thespragg/ExpressionMapper/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/thespragg/ExpressionMapper/graph/badge.svg)](https://codecov.io/gh/thespragg/ExpressionMapper)
-[![NuGet](https://img.shields.io/nuget/v/ExpressionMapper.svg)](https://www.nuget.org/packages/ExpressionMapper/)
+[![CI](https://github.com/thespragg/PredicateMapper/actions/workflows/ci.yml/badge.svg)](https://github.com/thespragg/PredicateMapper/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/thespragg/PredicateMapper/graph/badge.svg)](https://codecov.io/gh/thespragg/PredicateMapper)
+[![NuGet](https://img.shields.io/nuget/v/PredicateMapper.svg)](https://www.nuget.org/packages/PredicateMapper/)
 
 A lightweight library for rewriting `Expression<Func<TDestination, bool>>` predicates into `Expression<Func<TSource, bool>>` predicates. Generates SQL-translatable expressions for use where you want to expose generic higher-order functions without leaking your internal persistence model.
 

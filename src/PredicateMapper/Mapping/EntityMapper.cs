@@ -1,9 +1,9 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using ExpressionMapper.Exceptions;
-using ExpressionMapper.Expressions;
+using PredicateMapper.Exceptions;
+using PredicateMapper.Expressions;
 
-namespace ExpressionMapper.Mapping;
+namespace PredicateMapper.Mapping;
 
 /// <summary>
 /// Creates an expression mapping configuration between a source and its destination.

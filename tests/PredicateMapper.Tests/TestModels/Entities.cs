@@ -1,4 +1,4 @@
-namespace ExpressionMapper.Tests.TestModels;
+namespace PredicateMapper.Tests.TestModels;
 
 public class UserEntity
 {

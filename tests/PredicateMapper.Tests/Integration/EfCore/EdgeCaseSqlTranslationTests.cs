@@ -1,10 +1,10 @@
 using System.Linq.Expressions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ExpressionMapper.Mapping;
+using PredicateMapper.Mapping;
 using Microsoft.EntityFrameworkCore;
 
-namespace ExpressionMapper.Tests.Integration.EfCore;
+namespace PredicateMapper.Tests.Integration.EfCore;
 
 public enum AccountStatus
 {
@@ -210,7 +210,144 @@ public class EdgeCaseSqlTranslationTests : IDisposable
         var rewritten = mapper.MapExpression(predicate);
         var sql = _db.Users.Where(rewritten).ToQueryString();
 
-        // Owned type columns are in the same table — no JOIN should appear
         Assert.DoesNotContain("JOIN", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // The JOIN check alone is not enough — verify the owned column is referenced by
+    // its correct inlined name (e.g. Contact_CountryCode), not some invented alias.
+    [Fact]
+    public void Map_OwnedTypePropertyAccess_UsesCorrectColumnName()
+    {
+        var mapper = new UserWithContactMapper();
+        Expression<Func<UserWithContactDto, bool>> predicate = dst => dst.Contact.CountryCode == "GB";
+
+        var rewritten = mapper.MapExpression(predicate);
+        var sql = _db.Users.Where(rewritten).ToQueryString();
+
+        Assert.Contains("Contact_CountryCode", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // The int-cast pitfall applies equally to inequality comparisons.
+    [Fact]
+    public void Map_EnumInequality_StoredAsString_DoesNotIntroduceIntCast()
+    {
+        var mapper = new AccountMapper();
+        Expression<Func<AccountDto, bool>> predicate = dst => dst.Status != AccountStatus.Closed;
+
+        var rewritten = mapper.MapExpression(predicate);
+        var sql = _db.Accounts.Where(rewritten).ToQueryString();
+
+        Assert.DoesNotContain("CAST", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Closed", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Pitfall: a local collection of enum values passed to Contains must produce
+    // a SQL IN clause with the string-converted values, not integer casts.
+    [Fact]
+    public void Map_EnumCollectionContains_StoredAsString_DoesNotIntroduceIntCast()
+    {
+        var mapper = new AccountMapper();
+        var statuses = new List<AccountStatus> { AccountStatus.Active, AccountStatus.Suspended };
+        Expression<Func<AccountDto, bool>> predicate = dst => statuses.Contains(dst.Status);
+
+        var rewritten = mapper.MapExpression(predicate);
+        var sql = _db.Accounts.Where(rewritten).ToQueryString();
+
+        Assert.DoesNotContain("CAST", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Active", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Suspended", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // A null check on a nullable enum should translate to IS NULL, not a cast or comparison.
+    [Fact]
+    public void Map_NullableEnumNullCheck_TranslatesToIsNull()
+    {
+        var mapper = new AccountMapper();
+        Expression<Func<AccountDto, bool>> predicate = dst => dst.OptionalStatus == null;
+
+        var rewritten = mapper.MapExpression(predicate);
+        var sql = _db.Accounts.Where(rewritten).ToQueryString();
+
+        Assert.Contains("IS NULL", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("CAST", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Mixed predicate: enum column and int column in the same WHERE clause.
+    // Exercises that the rewriter doesn't corrupt type information when both
+    // member types appear together.
+    [Fact]
+    public void Map_CompoundPredicate_EnumAndInt_TranslatesCorrectly()
+    {
+        var mapper = new AccountMapper();
+        Expression<Func<AccountDto, bool>> predicate = dst => dst.Status == AccountStatus.Active && dst.Id > 5;
+
+        var rewritten = mapper.MapExpression(predicate);
+        var sql = _db.Accounts.Where(rewritten).ToQueryString();
+
+        Assert.DoesNotContain("CAST", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Active", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("5", sql);
+    }
+
+    // Execution: verify the rewritten query actually returns the right rows,
+    // not just that the SQL is structurally valid.
+    [Fact]
+    public void Map_EnumStoredAsString_ReturnsCorrectRows()
+    {
+        _db.Accounts.AddRange(
+            new AccountEntity { Id = 1, Status = AccountStatus.Active },
+            new AccountEntity { Id = 2, Status = AccountStatus.Suspended },
+            new AccountEntity { Id = 3, Status = AccountStatus.Closed }
+        );
+        _db.SaveChanges();
+
+        var mapper = new AccountMapper();
+        Expression<Func<AccountDto, bool>> predicate = dst => dst.Status == AccountStatus.Active;
+        var rewritten = mapper.MapExpression(predicate);
+
+        var results = _db.Accounts.Where(rewritten).ToList();
+
+        Assert.Single(results);
+        Assert.Equal(1, results[0].Id);
+    }
+
+    // Execution: verify null checks return only rows where the column is SQL NULL.
+    [Fact]
+    public void Map_NullableEnumNullCheck_ReturnsCorrectRows()
+    {
+        _db.Accounts.AddRange(
+            new AccountEntity { Id = 1, Status = AccountStatus.Active, OptionalStatus = null },
+            new AccountEntity { Id = 2, Status = AccountStatus.Suspended, OptionalStatus = AccountStatus.Closed }
+        );
+        _db.SaveChanges();
+
+        var mapper = new AccountMapper();
+        Expression<Func<AccountDto, bool>> predicate = dst => dst.OptionalStatus == null;
+        var rewritten = mapper.MapExpression(predicate);
+
+        var results = _db.Accounts.Where(rewritten).ToList();
+
+        Assert.Single(results);
+        Assert.Equal(1, results[0].Id);
+    }
+
+    // Execution: verify owned type filter returns the right rows against real data.
+    [Fact]
+    public void Map_OwnedTypePropertyAccess_ReturnsCorrectRows()
+    {
+        _db.Users.AddRange(
+            new UserWithContactEntity { Id = 1, Name = "Alice", Contact = new ContactInfoEntity { PhoneNumber = "111", CountryCode = "GB" } },
+            new UserWithContactEntity { Id = 2, Name = "Bob", Contact = new ContactInfoEntity { PhoneNumber = "222", CountryCode = "US" } }
+        );
+        _db.SaveChanges();
+
+        var mapper = new UserWithContactMapper();
+        Expression<Func<UserWithContactDto, bool>> predicate = dst => dst.Contact.CountryCode == "GB";
+        var rewritten = mapper.MapExpression(predicate);
+
+        var results = _db.Users.Where(rewritten).ToList();
+
+        Assert.Single(results);
+        Assert.Equal(1, results[0].Id);
     }
 }

@@ -1,9 +1,9 @@
 using System.Linq.Expressions;
-using ExpressionMapper.Tests.TestModels;
-using ExpressionMapper.Tests.Unit.Rewriting;
+using PredicateMapper.Tests.TestModels;
+using PredicateMapper.Tests.Unit.Rewriting;
 using Microsoft.EntityFrameworkCore;
 
-namespace ExpressionMapper.Tests.Integration.EfCore;
+namespace PredicateMapper.Tests.Integration.EfCore;
 
 public class SqlTranslationTests : IDisposable
 {
