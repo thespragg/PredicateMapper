@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using ExpressionMapper.Exceptions;
+using ExpressionMapper.Expressions;
 
 namespace ExpressionMapper.Mapping;
 
@@ -9,7 +10,7 @@ namespace ExpressionMapper.Mapping;
 /// </summary>
 /// <typeparam name="TSource">The source type.</typeparam>
 /// <typeparam name="TDestination">The destination type.</typeparam>
-public abstract class EntityMapper<TSource, TDestination>
+public abstract class EntityMapper<TSource, TDestination> : IEntityMapper
 {
     private readonly struct MappingEntry(MemberInfo sourceMember, object? nestedMapper = null)
     {
@@ -138,7 +139,30 @@ public abstract class EntityMapper<TSource, TDestination>
     /// </exception>
     public Expression<Func<TSource, bool>> MapExpression(Expression<Func<TDestination, bool>> predicate)
     {
-        throw new NotImplementedException();
+        var srcParam = Expression.Parameter(typeof(TSource), predicate.Parameters[0].Name);
+        var visitor = new ExpressionMapperVisitor(predicate.Parameters[0], srcParam, this);
+        var newBody = visitor.Visit(predicate.Body)!;
+        return Expression.Lambda<Func<TSource, bool>>(newBody, srcParam);
+    }
+
+    Type IEntityMapper.SourceType => typeof(TSource);
+
+    bool IEntityMapper.TryGetMapping(
+        MemberInfo destMember,
+        out MemberInfo? srcMember,
+        out IEntityMapper? nestedMapper
+    )
+    {
+        if (_mappings.TryGetValue(destMember, out var entry))
+        {
+            srcMember = entry.SourceMember;
+            nestedMapper = entry.NestedMapper as IEntityMapper;
+            return true;
+        }
+
+        srcMember = null;
+        nestedMapper = null;
+        return false;
     }
 
     private void RegisterMapping(MemberInfo destMember, MemberInfo srcMember, object? nestedMapper)
