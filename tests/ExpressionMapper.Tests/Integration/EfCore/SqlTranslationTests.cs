@@ -150,7 +150,7 @@ public class SqlTranslationTests : IDisposable
  
     private void AssertTranslatesToSql(Expression<Func<UserDto, bool>> predicate)
     {
-        var rewritten = _mapper.Map(predicate);
+        var rewritten = _mapper.MapExpression(predicate);
         var ex = Record.Exception(() => _db.Users.Where(rewritten).ToQueryString());
         Assert.Null(ex);
     }

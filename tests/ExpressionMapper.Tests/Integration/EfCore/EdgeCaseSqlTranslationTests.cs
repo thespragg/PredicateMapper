@@ -142,7 +142,7 @@ public class EdgeCaseSqlTranslationTests : IDisposable
         var mapper = new AccountMapper();
         Expression<Func<AccountDto, bool>> predicate = dst => dst.Status == AccountStatus.Active;
  
-        var rewritten = mapper.Map(predicate);
+        var rewritten = mapper.MapExpression(predicate);
         var ex = Record.Exception(() => _db.Accounts.Where(rewritten).ToQueryString());
  
         Assert.Null(ex);
@@ -156,7 +156,7 @@ public class EdgeCaseSqlTranslationTests : IDisposable
         var mapper = new AccountMapper();
         Expression<Func<AccountDto, bool>> predicate = dst => dst.OptionalStatus == AccountStatus.Suspended;
  
-        var rewritten = mapper.Map(predicate);
+        var rewritten = mapper.MapExpression(predicate);
         var ex = Record.Exception(() => _db.Accounts.Where(rewritten).ToQueryString());
  
         Assert.Null(ex);
@@ -172,7 +172,7 @@ public class EdgeCaseSqlTranslationTests : IDisposable
         var ids = new List<int> { 1, 2, 3 };
         Expression<Func<AccountDto, bool>> predicate = dst => ids.Contains(dst.Id);
  
-        var rewritten = mapper.Map(predicate);
+        var rewritten = mapper.MapExpression(predicate);
         var sql = _db.Accounts.Where(rewritten).ToQueryString();
  
         // Verify it actually produced an IN clause rather than throwing
@@ -188,7 +188,7 @@ public class EdgeCaseSqlTranslationTests : IDisposable
         var mapper = new UserWithContactMapper();
         Expression<Func<UserWithContactDto, bool>> predicate = dst => dst.Contact.CountryCode == "GB";
  
-        var rewritten = mapper.Map(predicate);
+        var rewritten = mapper.MapExpression(predicate);
         var sql = _db.Users.Where(rewritten).ToQueryString();
  
         // Owned type columns are in the same table — no JOIN should appear
