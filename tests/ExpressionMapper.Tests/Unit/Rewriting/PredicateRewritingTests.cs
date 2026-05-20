@@ -205,6 +205,60 @@ public class PredicateRewritingTests
     }
  
     [Fact]
+    public void Map_NullableValueType_IsNull_RewritesCorrectly()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => dst.Score == null;
+        var rewritten = _mapper.Map(predicate);
+
+        Assert.True(Invoke(rewritten, new UserEntity { Score = null }));
+        Assert.False(Invoke(rewritten, new UserEntity { Score = 5 }));
+    }
+
+    [Fact]
+    public void Map_NullableValueType_HasValue_RewritesCorrectly()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => dst.Score == 100;
+        var rewritten = _mapper.Map(predicate);
+
+        Assert.True(Invoke(rewritten, new UserEntity { Score = 100 }));
+        Assert.False(Invoke(rewritten, new UserEntity { Score = 99 }));
+        Assert.False(Invoke(rewritten, new UserEntity { Score = null }));
+    }
+
+    [Fact]
+    public void Map_CompoundNavigationProperties_RewritesCorrectly()
+    {
+        Expression<Func<UserDto, bool>> predicate =
+            dst => dst.Address!.City == "London" && dst.Subscription!.PlanName == "Pro";
+        var rewritten = _mapper.Map(predicate);
+
+        Assert.True(Invoke(rewritten, new UserEntity
+        {
+            Address = new AddressEntity { City = "London" },
+            Subscription = new SubscriptionEntity { PlanName = "Pro" }
+        }));
+        Assert.False(Invoke(rewritten, new UserEntity
+        {
+            Address = new AddressEntity { City = "London" },
+            Subscription = new SubscriptionEntity { PlanName = "Basic" }
+        }));
+    }
+
+    [Fact]
+    public void Map_StringIsNullOrEmpty_ThrowsUnsupportedExpressionException()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => string.IsNullOrEmpty(dst.Name);
+        Assert.Throws<UnsupportedExpressionException>(() => _mapper.Map(predicate));
+    }
+
+    [Fact]
+    public void Map_CollectionCount_ThrowsUnsupportedExpressionException()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => dst.Orders.Count() > 2;
+        Assert.Throws<UnsupportedExpressionException>(() => _mapper.Map(predicate));
+    }
+
+    [Fact]
     public void Map_UnsupportedExpression_ThrowsUnsupportedExpressionException()
     {
         Expression<Func<UserDto, bool>> predicate = dst => dst.Name.ToUpper() == "ALICE";
@@ -225,6 +279,7 @@ public class UserMapper : EntityMapper<UserEntity, UserDto>
         Map(src => src.Age, dst => dst.Age);
         Map(src => src.Email, dst => dst.Email);
         Map(src => src.Tags, dst => dst.Tags);
+        Map(src => src.Score, dst => dst.Score);
         Map(src => src.Address, dst => dst.Address, new AddressMapper());
         Map(src => src.OrderEntities, dst => dst.Orders, new OrderMapper());
         Map(src => src.Subscription, dst => dst.Subscription, new SubscriptionMapper());

@@ -12,6 +12,7 @@ public class UserDto
     public List<UserDto> Children { get; set; } = [];
     public SubscriptionDto? Subscription { get; set; }
     public List<string> Tags { get; set; } = [];
+    public int? Score { get; set; }
 }
  
 public class AddressDto

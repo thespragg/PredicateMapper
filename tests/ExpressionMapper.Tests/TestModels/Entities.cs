@@ -12,6 +12,7 @@ public class UserEntity
     public List<UserEntity> Children { get; set; } = [];
     public SubscriptionEntity? Subscription { get; set; }
     public List<string> Tags { get; set; } = [];
+    public int? Score { get; set; }
 }
  
 public class AddressEntity

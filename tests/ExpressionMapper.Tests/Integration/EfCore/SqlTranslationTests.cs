@@ -127,6 +127,20 @@ public class SqlTranslationTests : IDisposable
     }
  
     [Fact]
+    public void Map_NullableValueType_IsNull_TranslatesToSql()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => dst.Score == null;
+        AssertTranslatesToSql(predicate);
+    }
+
+    [Fact]
+    public void Map_NullableValueType_HasValue_TranslatesToSql()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => dst.Score == 100;
+        AssertTranslatesToSql(predicate);
+    }
+
+    [Fact]
     public void Map_CompoundPredicate_TranslatesToSql()
     {
         Expression<Func<UserDto, bool>> predicate =
