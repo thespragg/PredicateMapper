@@ -264,9 +264,88 @@ public class PredicateRewritingTests
         Expression<Func<UserDto, bool>> predicate = dst => dst.Name.ToUpper() == "ALICE";
         Assert.Throws<UnsupportedExpressionException>(() => _mapper.MapExpression(predicate));
     }
- 
+
+    // Covers: VisitMember throw + TryGetMapping false path.
+    // A read-only property has no setter so Validate() skips it, but accessing it in
+    // a predicate must still throw rather than silently produce a broken expression.
+    [Fact]
+    public void Map_UnmappedReadOnlyProperty_ThrowsUnsupportedExpressionException()
+    {
+        var mapper = new ReadOnlyPropMapper();
+        Expression<Func<ReadOnlyPropDto, bool>> predicate = dst => dst.Label == "x";
+        Assert.Throws<UnsupportedExpressionException>(() => mapper.MapExpression(predicate));
+    }
+
+    // Covers: GetNestedMapperForExpression returns null when the collection root is not destParam.
+    // A local list captured in a closure is not a member of the destination — the visitor
+    // cannot locate an element mapper for it.
+    [Fact]
+    public void Map_AnyOnLocalCollectionNotOnDestParam_ThrowsUnsupportedExpressionException()
+    {
+        var localOrders = new List<OrderDto>();
+        Expression<Func<UserDto, bool>> predicate = dst => localOrders.Any(o => o.Total > 100);
+        Assert.Throws<UnsupportedExpressionException>(() => _mapper.MapExpression(predicate));
+    }
+
+    // Covers: Enumerable.Contains static call (line 122 of IsSupportedMethod).
+    // When the collection is typed as IEnumerable<T> the compiler emits Enumerable.Contains
+    // rather than List<T>.Contains, which is a different code path in IsSupportedMethod.
+    [Fact]
+    public void Map_EnumerableContainsStaticCall_RewritesCorrectly()
+    {
+        IEnumerable<int> ids = new[] { 1, 2, 3 };
+        Expression<Func<UserDto, bool>> predicate = dst => ids.Contains(dst.Id);
+        var rewritten = _mapper.MapExpression(predicate);
+        Assert.True(Invoke(rewritten, new UserEntity { UserId = 2 }));
+        Assert.False(Invoke(rewritten, new UserEntity { UserId = 5 }));
+    }
+
+    // Covers: unsupported method whose arguments do not touch destParam passes through
+    // (VisitMethodCall line 62) and the wildcard arm of TouchesDestParam (line 143).
+    [Fact]
+    public void Map_UnsupportedMethodNotTouchingDestParam_PassesThrough()
+    {
+        var nonEmpty = "non-empty";
+        Expression<Func<UserDto, bool>> predicate = dst => dst.Id > 0 && string.IsNullOrEmpty(nonEmpty);
+        var rewritten = _mapper.MapExpression(predicate);
+        Assert.False(Invoke(rewritten, new UserEntity { UserId = 1 }));
+    }
+
+    // Covers: BinaryExpression arm (line 140) and UnaryExpression arm (line 141) of
+    // TouchesDestParam. The bool result of `dst.Id > 0` is boxed to object by the
+    // compiler, producing Convert(BinaryExpression) — a UnaryExpression wrapping a
+    // BinaryExpression — as an argument to string.Format.
+    [Fact]
+    public void Map_UnsupportedMethodWithBinaryArgTouchingDestParam_Throws()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => string.Format("{0}", dst.Id > 0) == "True";
+        Assert.Throws<UnsupportedExpressionException>(() => _mapper.MapExpression(predicate));
+    }
+
+    // Covers: UnaryExpression arm (line 141) of TouchesDestParam independently —
+    // `!dst.IsActive` is a UnaryExpression without an outer BinaryExpression wrapper.
+    [Fact]
+    public void Map_UnsupportedMethodWithUnaryArgTouchingDestParam_Throws()
+    {
+        Expression<Func<UserDto, bool>> predicate = dst => string.Format("{0}", !dst.IsActive) == "False";
+        Assert.Throws<UnsupportedExpressionException>(() => _mapper.MapExpression(predicate));
+    }
+
     private static bool Invoke<T>(Expression<Func<T, bool>> expression, T target)
         => expression.Compile()(target);
+}
+
+public class ReadOnlyPropEntity { public int Id { get; set; } }
+
+public class ReadOnlyPropDto
+{
+    public int Id { get; set; }
+    public string Label => "x"; // no setter: Validate() skips it, but it is still unmapped
+}
+
+public class ReadOnlyPropMapper : EntityMapper<ReadOnlyPropEntity, ReadOnlyPropDto>
+{
+    protected override void Configure() => Map(src => src.Id, dst => dst.Id);
 }
  
 public class UserMapper : EntityMapper<UserEntity, UserDto>
