@@ -112,7 +112,7 @@ Unmapped source members are safe to omit — they will never appear in a destina
 
 ## Known Limitations
 
-- Method calls beyond `Any`, `All`, `Contains`, and the string methods `StartsWith`, `EndsWith`, `Contains` are not rewritten and will throw `UnsupportedExpressionException` at map time
+`UnsupportedExpressionException` at map time
 - Composite source expressions (e.g. mapping `src.First + " " + src.Last` to `dst.FullName`) are not supported in v1 — both sides of a mapping must be simple member access
 - Closures over complex captured objects should be tested against your ORM — captured primitives and local collections are handled correctly
 
